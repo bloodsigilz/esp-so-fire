@@ -165,7 +165,7 @@ end)
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "vivds the goat",
-        Text = "nigger esp v1",
+        Text = "nigguh esp v1",
         Duration = 5
     })
 end)

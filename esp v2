@@ -1,0 +1,424 @@
+-- ESP toggle with K key, UI toggle with L key
+-- CONFIG
+local TOGGLE_KEY = Enum.KeyCode.K
+local UI_TOGGLE_KEY = Enum.KeyCode.L
+
+-- STATE
+local ESPEnabled = false
+local UIVisible = false
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local UIS = game:GetService("UserInputService")
+local ESPObjects = {}
+
+-- ESP Color (default white)
+local ESPColor = Color3.new(1, 1, 1)
+local RValue = 255
+local GValue = 255
+local BValue = 255
+
+-- Create UI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESPColorUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -120)
+MainFrame.Size = UDim2.new(0, 300, 0, 240)
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 0, 0, 5)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "ESP Color Settings"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextSize = 16
+
+-- Red Slider
+local RLabel = Instance.new("TextLabel")
+RLabel.Parent = MainFrame
+RLabel.BackgroundTransparency = 1
+RLabel.Position = UDim2.new(0, 20, 0, 45)
+RLabel.Size = UDim2.new(0, 30, 0, 20)
+RLabel.Font = Enum.Font.Gotham
+RLabel.Text = "R:"
+RLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+RLabel.TextSize = 14
+RLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local RSlider = Instance.new("Frame")
+RSlider.Parent = MainFrame
+RSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+RSlider.BorderSizePixel = 0
+RSlider.Position = UDim2.new(0, 50, 0, 45)
+RSlider.Size = UDim2.new(0, 150, 0, 20)
+
+local RSliderButton = Instance.new("TextButton")
+RSliderButton.Parent = RSlider
+RSliderButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+RSliderButton.BorderSizePixel = 0
+RSliderButton.Size = UDim2.new(1, 0, 1, 0)
+RSliderButton.Text = ""
+
+local RBox = Instance.new("TextBox")
+RBox.Parent = MainFrame
+RBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+RBox.BorderSizePixel = 0
+RBox.Position = UDim2.new(0, 210, 0, 45)
+RBox.Size = UDim2.new(0, 70, 0, 20)
+RBox.Font = Enum.Font.Gotham
+RBox.Text = "255"
+RBox.TextColor3 = Color3.new(1, 1, 1)
+RBox.TextSize = 12
+
+-- Green Slider
+local GLabel = Instance.new("TextLabel")
+GLabel.Parent = MainFrame
+GLabel.BackgroundTransparency = 1
+GLabel.Position = UDim2.new(0, 20, 0, 85)
+GLabel.Size = UDim2.new(0, 30, 0, 20)
+GLabel.Font = Enum.Font.Gotham
+GLabel.Text = "G:"
+GLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+GLabel.TextSize = 14
+GLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local GSlider = Instance.new("Frame")
+GSlider.Parent = MainFrame
+GSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+GSlider.BorderSizePixel = 0
+GSlider.Position = UDim2.new(0, 50, 0, 85)
+GSlider.Size = UDim2.new(0, 150, 0, 20)
+
+local GSliderButton = Instance.new("TextButton")
+GSliderButton.Parent = GSlider
+GSliderButton.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+GSliderButton.BorderSizePixel = 0
+GSliderButton.Size = UDim2.new(1, 0, 1, 0)
+GSliderButton.Text = ""
+
+local GBox = Instance.new("TextBox")
+GBox.Parent = MainFrame
+GBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+GBox.BorderSizePixel = 0
+GBox.Position = UDim2.new(0, 210, 0, 85)
+GBox.Size = UDim2.new(0, 70, 0, 20)
+GBox.Font = Enum.Font.Gotham
+GBox.Text = "255"
+GBox.TextColor3 = Color3.new(1, 1, 1)
+GBox.TextSize = 12
+
+-- Blue Slider
+local BLabel = Instance.new("TextLabel")
+BLabel.Parent = MainFrame
+BLabel.BackgroundTransparency = 1
+BLabel.Position = UDim2.new(0, 20, 0, 125)
+BLabel.Size = UDim2.new(0, 30, 0, 20)
+BLabel.Font = Enum.Font.Gotham
+BLabel.Text = "B:"
+BLabel.TextColor3 = Color3.fromRGB(100, 100, 255)
+BLabel.TextSize = 14
+BLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local BSlider = Instance.new("Frame")
+BSlider.Parent = MainFrame
+BSlider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+BSlider.BorderSizePixel = 0
+BSlider.Position = UDim2.new(0, 50, 0, 125)
+BSlider.Size = UDim2.new(0, 150, 0, 20)
+
+local BSliderButton = Instance.new("TextButton")
+BSliderButton.Parent = BSlider
+BSliderButton.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+BSliderButton.BorderSizePixel = 0
+BSliderButton.Size = UDim2.new(1, 0, 1, 0)
+BSliderButton.Text = ""
+
+local BBox = Instance.new("TextBox")
+BBox.Parent = MainFrame
+BBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+BBox.BorderSizePixel = 0
+BBox.Position = UDim2.new(0, 210, 0, 125)
+BBox.Size = UDim2.new(0, 70, 0, 20)
+BBox.Font = Enum.Font.Gotham
+BBox.Text = "255"
+BBox.TextColor3 = Color3.new(1, 1, 1)
+BBox.TextSize = 12
+
+-- Color Preview
+local ColorPreview = Instance.new("Frame")
+ColorPreview.Parent = MainFrame
+ColorPreview.BackgroundColor3 = Color3.new(1, 1, 1)
+ColorPreview.BorderSizePixel = 0
+ColorPreview.Position = UDim2.new(0, 50, 0, 165)
+ColorPreview.Size = UDim2.new(0, 230, 0, 40)
+
+local PreviewCorner = Instance.new("UICorner")
+PreviewCorner.CornerRadius = UDim.new(0, 6)
+PreviewCorner.Parent = ColorPreview
+
+local PreviewLabel = Instance.new("TextLabel")
+PreviewLabel.Parent = ColorPreview
+PreviewLabel.BackgroundTransparency = 1
+PreviewLabel.Size = UDim2.new(1, 0, 1, 0)
+PreviewLabel.Font = Enum.Font.GothamBold
+PreviewLabel.Text = "Color Preview"
+PreviewLabel.TextColor3 = Color3.new(0, 0, 0)
+PreviewLabel.TextSize = 14
+
+-- Instructions
+local Instructions = Instance.new("TextLabel")
+Instructions.Parent = MainFrame
+Instructions.BackgroundTransparency = 1
+Instructions.Position = UDim2.new(0, 0, 0, 215)
+Instructions.Size = UDim2.new(1, 0, 0, 20)
+Instructions.Font = Enum.Font.Gotham
+Instructions.Text = "Press L to toggle UI"
+Instructions.TextColor3 = Color3.fromRGB(180, 180, 180)
+Instructions.TextSize = 11
+
+ScreenGui.Parent = game:GetService("CoreGui")
+
+-- Update ESP Color Function
+local function updateESPColor()
+	RValue = math.clamp(tonumber(RBox.Text) or 255, 0, 255)
+	GValue = math.clamp(tonumber(GBox.Text) or 255, 0, 255)
+	BValue = math.clamp(tonumber(BBox.Text) or 255, 0, 255)
+	
+	ESPColor = Color3.fromRGB(RValue, GValue, BValue)
+	ColorPreview.BackgroundColor3 = ESPColor
+	
+	-- Update text boxes
+	RBox.Text = tostring(RValue)
+	GBox.Text = tostring(GValue)
+	BBox.Text = tostring(BValue)
+	
+	-- Update sliders
+	RSliderButton.Size = UDim2.new(RValue / 255, 0, 1, 0)
+	GSliderButton.Size = UDim2.new(GValue / 255, 0, 1, 0)
+	BSliderButton.Size = UDim2.new(BValue / 255, 0, 1, 0)
+end
+
+-- Slider Functionality
+local function setupSlider(slider, sliderButton, textBox, getValue, setValue)
+	local dragging = false
+	
+	sliderButton.MouseButton1Down:Connect(function()
+		dragging = true
+	end)
+	
+	UIS.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+	
+	RunService.RenderStepped:Connect(function()
+		if dragging then
+			local mouse = UIS:GetMouseLocation()
+			local relativeX = math.clamp(mouse.X - slider.AbsolutePosition.X, 0, slider.AbsoluteSize.X)
+			local percentage = relativeX / slider.AbsoluteSize.X
+			local value = math.floor(percentage * 255)
+			
+			textBox.Text = tostring(value)
+			updateESPColor()
+		end
+	end)
+end
+
+setupSlider(RSlider, RSliderButton, RBox)
+setupSlider(GSlider, GSliderButton, GBox)
+setupSlider(BSlider, BSliderButton, BBox)
+
+-- TextBox Functionality
+RBox.FocusLost:Connect(updateESPColor)
+GBox.FocusLost:Connect(updateESPColor)
+BBox.FocusLost:Connect(updateESPColor)
+
+-- Keybind Toggles
+UIS.InputBegan:Connect(function(input, gp)
+	if not gp then
+		if input.KeyCode == TOGGLE_KEY then
+			ESPEnabled = not ESPEnabled
+		elseif input.KeyCode == UI_TOGGLE_KEY then
+			UIVisible = not UIVisible
+			MainFrame.Visible = UIVisible
+		end
+	end
+end)
+
+-- Create ESP Drawing objects
+local function createESP(player)
+	if ESPObjects[player] then return end
+	ESPObjects[player] = {
+		Box = Drawing.new("Square"),
+		Tracer = Drawing.new("Line"),
+		Name = Drawing.new("Text"),
+		Distance = Drawing.new("Text"),
+		Item = Drawing.new("Text"),
+		HealthBar = Drawing.new("Line"),
+		HealthBarBG = Drawing.new("Line"),
+	}
+
+	local esp = ESPObjects[player]
+	esp.Box.Thickness = 1
+	esp.Box.Filled = false
+
+	esp.Tracer.Thickness = 1
+
+	esp.Name.Size = 14
+	esp.Name.Center = true
+	esp.Name.Outline = true
+
+	esp.Distance.Size = 13
+	esp.Distance.Center = true
+	esp.Distance.Outline = true
+
+	esp.Item.Size = 13
+	esp.Item.Center = true
+	esp.Item.Outline = true
+
+	esp.HealthBar.Thickness = 2
+	esp.HealthBarBG.Thickness = 2
+	esp.HealthBarBG.Color = Color3.new(0, 0, 0)
+end
+
+local function removeESP(player)
+	if ESPObjects[player] then
+		for _, obj in pairs(ESPObjects[player]) do
+			obj:Remove()
+		end
+		ESPObjects[player] = nil
+	end
+end
+
+Players.PlayerRemoving:Connect(removeESP)
+
+-- Get equipped item name
+local function getEquippedItem(character)
+	local tool = character:FindFirstChildOfClass("Tool")
+	if tool then
+		return tool.Name
+	end
+	return ""
+end
+
+-- Main ESP Render Loop
+RunService.RenderStepped:Connect(function()
+	if not ESPEnabled then
+		for _, esp in pairs(ESPObjects) do
+			for _, obj in pairs(esp) do
+				obj.Visible = false
+			end
+		end
+		return
+	end
+
+	local localChar = LocalPlayer.Character
+	local localHRP = localChar and localChar:FindFirstChild("HumanoidRootPart")
+	if not localHRP then return end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local humanoid = player.Character:FindFirstChild("Humanoid")
+
+			if hrp and humanoid and humanoid.Health > 0 then
+				createESP(player)
+				local esp = ESPObjects[player]
+
+				local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+				if onScreen then
+					local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+					local width = math.clamp(1000 / distance, 6, 25)
+					local height = math.clamp(600 / distance, 6, 20)
+					local boxPos = Vector2.new(screenPos.X - width / 2, screenPos.Y - height / 2)
+
+					esp.Box.Position = boxPos
+					esp.Box.Size = Vector2.new(width, height)
+					esp.Box.Color = ESPColor
+					esp.Box.Visible = true
+
+					local fromScreen = Camera:WorldToViewportPoint(localHRP.Position)
+					esp.Tracer.From = Vector2.new(fromScreen.X, fromScreen.Y)
+					esp.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+					esp.Tracer.Color = ESPColor
+					esp.Tracer.Visible = true
+
+					esp.Name.Text = player.DisplayName
+					esp.Name.Position = Vector2.new(screenPos.X, screenPos.Y - height / 2 - 14)
+					esp.Name.Color = ESPColor
+					esp.Name.Visible = true
+
+					esp.Distance.Text = string.format("%.0f studs", distance)
+					esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + height / 2 + 2)
+					esp.Distance.Color = ESPColor
+					esp.Distance.Visible = true
+
+					-- Item indicator
+					local equippedItem = getEquippedItem(player.Character)
+					if equippedItem ~= "" then
+						esp.Item.Text = "[" .. equippedItem .. "]"
+						esp.Item.Position = Vector2.new(screenPos.X, screenPos.Y + height / 2 + 17)
+						esp.Item.Color = ESPColor
+						esp.Item.Visible = true
+					else
+						esp.Item.Visible = false
+					end
+
+					local healthPercent = humanoid.Health / humanoid.MaxHealth
+					local barHeight = height
+					local barY = boxPos.Y
+					local barX = boxPos.X - 5
+
+					esp.HealthBarBG.From = Vector2.new(barX, barY)
+					esp.HealthBarBG.To = Vector2.new(barX, barY + barHeight)
+					esp.HealthBarBG.Visible = true
+
+					esp.HealthBar.From = Vector2.new(barX, barY + barHeight)
+					esp.HealthBar.To = Vector2.new(barX, barY + barHeight * (1 - healthPercent))
+					esp.HealthBar.Color = Color3.fromRGB(255 - 255 * healthPercent, 255 * healthPercent, 0)
+					esp.HealthBar.Visible = true
+				else
+					for _, obj in pairs(esp) do
+						obj.Visible = false
+					end
+				end
+			else
+				removeESP(player)
+			end
+		end
+	end
+end)
+
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "vivds the goat",
+        Text = "nigguh esp v2",
+        Duration = 5
+    })
+end)
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "vivds the goat",
+        Text = "K to enable <3",
+        Duration = 7.5
+    })
+end)

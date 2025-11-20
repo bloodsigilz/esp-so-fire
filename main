@@ -1,0 +1,178 @@
+-- ESP toggle with K key
+-- CONFIG
+local TOGGLE_KEY = Enum.KeyCode.K
+
+-- STATE
+local ESPEnabled = false
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local UIS = game:GetService("UserInputService")
+local ESPObjects = {}
+
+-- Keybind Toggle
+UIS.InputBegan:Connect(function(input, gp)
+	if not gp and input.KeyCode == TOGGLE_KEY then
+		ESPEnabled = not ESPEnabled
+	end
+end)
+
+-- Create ESP Drawing objects
+local function createESP(player)
+	if ESPObjects[player] then return end
+	ESPObjects[player] = {
+		Box = Drawing.new("Square"),
+		Tracer = Drawing.new("Line"),
+		Name = Drawing.new("Text"),
+		Distance = Drawing.new("Text"),
+		Item = Drawing.new("Text"),
+		HealthBar = Drawing.new("Line"),
+		HealthBarBG = Drawing.new("Line"),
+	}
+
+	local esp = ESPObjects[player]
+	esp.Box.Thickness = 1
+	esp.Box.Filled = false
+	esp.Box.Color = Color3.new(1, 1, 1) -- White
+
+	esp.Tracer.Thickness = 1
+	esp.Tracer.Color = Color3.new(1, 1, 1) -- White
+
+	esp.Name.Size = 14
+	esp.Name.Center = true
+	esp.Name.Outline = true
+	esp.Name.Color = Color3.new(1, 1, 1) -- White
+
+	esp.Distance.Size = 13
+	esp.Distance.Center = true
+	esp.Distance.Outline = true
+	esp.Distance.Color = Color3.new(1, 1, 1) -- White
+
+	esp.Item.Size = 13
+	esp.Item.Center = true
+	esp.Item.Outline = true
+	esp.Item.Color = Color3.new(1, 1, 1) -- White
+
+	esp.HealthBar.Thickness = 2
+	esp.HealthBarBG.Thickness = 2
+	esp.HealthBarBG.Color = Color3.new(0, 0, 0)
+end
+
+local function removeESP(player)
+	if ESPObjects[player] then
+		for _, obj in pairs(ESPObjects[player]) do
+			obj:Remove()
+		end
+		ESPObjects[player] = nil
+	end
+end
+
+Players.PlayerRemoving:Connect(removeESP)
+
+-- Get equipped item name
+local function getEquippedItem(character)
+	local tool = character:FindFirstChildOfClass("Tool")
+	if tool then
+		return tool.Name
+	end
+	return ""
+end
+
+-- Main ESP Render Loop
+RunService.RenderStepped:Connect(function()
+	if not ESPEnabled then
+		for _, esp in pairs(ESPObjects) do
+			for _, obj in pairs(esp) do
+				obj.Visible = false
+			end
+		end
+		return
+	end
+
+	local localChar = LocalPlayer.Character
+	local localHRP = localChar and localChar:FindFirstChild("HumanoidRootPart")
+	if not localHRP then return end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local humanoid = player.Character:FindFirstChild("Humanoid")
+
+			if hrp and humanoid and humanoid.Health > 0 then
+				createESP(player)
+				local esp = ESPObjects[player]
+
+				local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+				if onScreen then
+					local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+					local width = math.clamp(1000 / distance, 6, 25)
+					local height = math.clamp(600 / distance, 6, 20)
+					local boxPos = Vector2.new(screenPos.X - width / 2, screenPos.Y - height / 2)
+
+					esp.Box.Position = boxPos
+					esp.Box.Size = Vector2.new(width, height)
+					esp.Box.Visible = true
+
+					local fromScreen = Camera:WorldToViewportPoint(localHRP.Position)
+					esp.Tracer.From = Vector2.new(fromScreen.X, fromScreen.Y)
+					esp.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+					esp.Tracer.Visible = true
+
+					esp.Name.Text = player.DisplayName
+					esp.Name.Position = Vector2.new(screenPos.X, screenPos.Y - height / 2 - 14)
+					esp.Name.Visible = true
+
+					esp.Distance.Text = string.format("%.0f studs", distance)
+					esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + height / 2 + 2)
+					esp.Distance.Visible = true
+
+					-- Item indicator
+					local equippedItem = getEquippedItem(player.Character)
+					if equippedItem ~= "" then
+						esp.Item.Text = equippedItem
+						esp.Item.Position = Vector2.new(screenPos.X, screenPos.Y + height / 2 + 17)
+						esp.Item.Visible = true
+					else
+						esp.Item.Visible = false
+					end
+
+					local healthPercent = humanoid.Health / humanoid.MaxHealth
+					local barHeight = height
+					local barY = boxPos.Y
+					local barX = boxPos.X - 5
+
+					esp.HealthBarBG.From = Vector2.new(barX, barY)
+					esp.HealthBarBG.To = Vector2.new(barX, barY + barHeight)
+					esp.HealthBarBG.Visible = true
+
+					esp.HealthBar.From = Vector2.new(barX, barY + barHeight)
+					esp.HealthBar.To = Vector2.new(barX, barY + barHeight * (1 - healthPercent))
+					esp.HealthBar.Color = Color3.fromRGB(255 - 255 * healthPercent, 255 * healthPercent, 0)
+					esp.HealthBar.Visible = true
+				else
+					for _, obj in pairs(esp) do
+						obj.Visible = false
+					end
+				end
+			else
+				removeESP(player)
+			end
+		end
+	end
+end)
+
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "vivds the goat",
+        Text = "nigger esp v1",
+        Duration = 5
+    })
+end)
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "vivds the goat",
+        Text = "K to enable <3",
+        Duration = 7.5
+    })
+end)

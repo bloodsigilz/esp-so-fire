@@ -241,7 +241,7 @@ end)
 pcall(function()
 	game:GetService("StarterGui"):SetCore("SendNotification", {
 		Title = "vivds the goat",
-		Text = "ESP on, K to turn on",
+		Text = "ESP on, K to enable",
 		Duration = 5
 	})
 end)

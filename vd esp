@@ -1,0 +1,258 @@
+-- ESP toggle com K key - Baseado em times com highlight através das paredes
+-- CONFIG
+local TOGGLE_KEY = Enum.KeyCode.K
+
+-- STATE
+local ESPEnabled = false
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local UIS = game:GetService("UserInputService")
+local ESPObjects = {}
+
+-- Função para obter cor do time
+local function getTeamColor(player)
+	if player.Team then
+		return player.Team.TeamColor.Color
+	end
+	-- Cor padrão se não tiver time
+	return Color3.new(1, 1, 1)
+end
+
+-- Keybind Toggle
+UIS.InputBegan:Connect(function(input, gp)
+	if not gp then
+		if input.KeyCode == TOGGLE_KEY then
+			ESPEnabled = not ESPEnabled
+		end
+	end
+end)
+
+-- Create ESP Drawing objects + Highlight
+local function createESP(player)
+	if ESPObjects[player] then return end
+	ESPObjects[player] = {
+		Box = Drawing.new("Square"),
+		Tracer = Drawing.new("Line"),
+		Name = Drawing.new("Text"),
+		Distance = Drawing.new("Text"),
+		Item = Drawing.new("Text"),
+		HealthBar = Drawing.new("Line"),
+		HealthBarBG = Drawing.new("Line"),
+		Highlight = nil -- Será criado quando o character existir
+	}
+
+	local esp = ESPObjects[player]
+	esp.Box.Thickness = 2
+	esp.Box.Filled = false
+
+	esp.Tracer.Thickness = 1
+
+	esp.Name.Size = 14
+	esp.Name.Center = true
+	esp.Name.Outline = true
+
+	esp.Distance.Size = 13
+	esp.Distance.Center = true
+	esp.Distance.Outline = true
+
+	esp.Item.Size = 13
+	esp.Item.Center = true
+	esp.Item.Outline = true
+
+	esp.HealthBar.Thickness = 3
+	esp.HealthBarBG.Thickness = 3
+	esp.HealthBarBG.Color = Color3.new(0, 0, 0)
+end
+
+local function removeESP(player)
+	if ESPObjects[player] then
+		for _, obj in pairs(ESPObjects[player]) do
+			if obj and typeof(obj) == "Instance" then
+				obj:Destroy()
+			elseif obj and obj.Remove then
+				obj:Remove()
+			end
+		end
+		ESPObjects[player] = nil
+	end
+end
+
+-- Criar ou atualizar Highlight
+local function createOrUpdateHighlight(player, character)
+	if not ESPObjects[player] then return end
+	
+	local esp = ESPObjects[player]
+	
+	-- Remover highlight antigo se existir
+	if esp.Highlight then
+		esp.Highlight:Destroy()
+	end
+	
+	-- Criar novo highlight
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ESPHighlight"
+	highlight.Adornee = character
+	highlight.FillColor = getTeamColor(player)
+	highlight.OutlineColor = getTeamColor(player)
+	highlight.FillTransparency = 0.5
+	highlight.OutlineTransparency = 0
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = character
+	
+	esp.Highlight = highlight
+end
+
+Players.PlayerRemoving:Connect(removeESP)
+
+-- Monitorar quando characters spawnam
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function(character)
+		if ESPEnabled and player ~= LocalPlayer then
+			task.wait(0.1) -- Pequeno delay para garantir que tudo carregou
+			createOrUpdateHighlight(player, character)
+		end
+	end)
+end)
+
+-- Para players já no jogo
+for _, player in ipairs(Players:GetPlayers()) do
+	if player ~= LocalPlayer then
+		player.CharacterAdded:Connect(function(character)
+			if ESPEnabled then
+				task.wait(0.1)
+				createOrUpdateHighlight(player, character)
+			end
+		end)
+	end
+end
+
+-- Get equipped item name
+local function getEquippedItem(character)
+	local tool = character:FindFirstChildOfClass("Tool")
+	if tool then
+		return tool.Name
+	end
+	return ""
+end
+
+-- Main ESP Render Loop
+RunService.RenderStepped:Connect(function()
+	if not ESPEnabled then
+		for _, esp in pairs(ESPObjects) do
+			for key, obj in pairs(esp) do
+				if key ~= "Highlight" then
+					if obj and obj.Visible ~= nil then
+						obj.Visible = false
+					end
+				elseif obj then
+					obj.Enabled = false
+				end
+			end
+		end
+		return
+	end
+
+	local localChar = LocalPlayer.Character
+	local localHRP = localChar and localChar:FindFirstChild("HumanoidRootPart")
+	if not localHRP then return end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character then
+			local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+			local humanoid = player.Character:FindFirstChild("Humanoid")
+
+			if hrp and humanoid and humanoid.Health > 0 then
+				createESP(player)
+				local esp = ESPObjects[player]
+				
+				-- Criar/Atualizar highlight se não existir
+				if not esp.Highlight or not esp.Highlight.Parent then
+					createOrUpdateHighlight(player, player.Character)
+				else
+					esp.Highlight.Enabled = true
+					-- Atualizar cores baseado no time
+					local teamColor = getTeamColor(player)
+					esp.Highlight.FillColor = teamColor
+					esp.Highlight.OutlineColor = teamColor
+				end
+
+				local screenPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+				local teamColor = getTeamColor(player)
+				
+				if onScreen then
+					local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+					local width = math.clamp(1000 / distance, 6, 25)
+					local height = math.clamp(600 / distance, 6, 20)
+					local boxPos = Vector2.new(screenPos.X - width / 2, screenPos.Y - height / 2)
+
+					esp.Box.Position = boxPos
+					esp.Box.Size = Vector2.new(width, height)
+					esp.Box.Color = teamColor
+					esp.Box.Visible = true
+
+					local fromScreen = Camera:WorldToViewportPoint(localHRP.Position)
+					esp.Tracer.From = Vector2.new(fromScreen.X, fromScreen.Y)
+					esp.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+					esp.Tracer.Color = teamColor
+					esp.Tracer.Visible = true
+
+					esp.Name.Text = player.DisplayName
+					esp.Name.Position = Vector2.new(screenPos.X, screenPos.Y - height / 2 - 14)
+					esp.Name.Color = teamColor
+					esp.Name.Visible = true
+
+					esp.Distance.Text = string.format("%.0f studs", distance)
+					esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + height / 2 + 2)
+					esp.Distance.Color = teamColor
+					esp.Distance.Visible = true
+
+					-- Item indicator
+					local equippedItem = getEquippedItem(player.Character)
+					if equippedItem ~= "" then
+						esp.Item.Text = equippedItem
+						esp.Item.Position = Vector2.new(screenPos.X, screenPos.Y + height / 2 + 17)
+						esp.Item.Color = teamColor
+						esp.Item.Visible = true
+					else
+						esp.Item.Visible = false
+					end
+
+					-- Health bar
+					local healthPercent = humanoid.Health / humanoid.MaxHealth
+					local barHeight = height
+					local barY = boxPos.Y
+					local barX = boxPos.X - 5
+
+					esp.HealthBarBG.From = Vector2.new(barX, barY)
+					esp.HealthBarBG.To = Vector2.new(barX, barY + barHeight)
+					esp.HealthBarBG.Visible = true
+
+					esp.HealthBar.From = Vector2.new(barX, barY + barHeight)
+					esp.HealthBar.To = Vector2.new(barX, barY + barHeight * (1 - healthPercent))
+					esp.HealthBar.Color = Color3.fromRGB(255 - 255 * healthPercent, 255 * healthPercent, 0)
+					esp.HealthBar.Visible = true
+				else
+					for key, obj in pairs(esp) do
+						if key ~= "Highlight" then
+							if obj and obj.Visible ~= nil then
+								obj.Visible = false
+							end
+						end
+					end
+				end
+			else
+				removeESP(player)
+			end
+		end
+	end
+end)
+
+pcall(function()
+	game:GetService("StarterGui"):SetCore("SendNotification", {
+		Title = "ESP por Time",
+		Text = "ESP ativado! Pressione K para ligar/desligar",
+		Duration = 5
+	})
+end)
